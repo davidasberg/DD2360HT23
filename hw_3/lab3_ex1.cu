@@ -170,7 +170,9 @@ int main(int argc, char **argv)
     end_convert_kernel = std::chrono::system_clock::now();
 
     //@@ Copy the GPU memory back to the CPU here
+    start_copy_to_host = std::chrono::system_clock::now();
     cudaMemcpy(hostBins, deviceBins, NUM_BINS * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    end_copy_to_host = std::chrono::system_clock::now();
 
     printf("The GPU result is: \n");
     // for (int i = 0; i < NUM_BINS; i++)
