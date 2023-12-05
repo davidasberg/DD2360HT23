@@ -247,91 +247,121 @@ __global__ void moverKernel(struct particles* part, struct EMfield* field, struc
 
     // Check if the thread is within the range of particles
     if (tid < numParticles) {
-        xptilde = part->x[tid];
-        yptilde = part->y[tid];
-        zptilde = part->z[tid];
-        
-        for(int innter=0; innter < part->NiterMover; innter++){
-            ix = 2 + int((part->x[tid] - grd->xStart) * grd->invdx);
-            iy = 2 + int((part->y[tid] - grd->yStart) * grd->invdy);
-            iz = 2 + int((part->z[tid] - grd->zStart) * grd->invdz);
-
-            xi[0]   = part->x[tid] - grd->XN[ix - 1][iy][iz];
-            eta[0]  = part->y[tid] - grd->YN[ix][iy - 1][iz];
-            zeta[0] = part->z[tid] - grd->ZN[ix][iy][iz - 1];
-            xi[1]   = grd->XN[ix][iy][iz] - part->x[tid];
-            eta[1]  = grd->YN[ix][iy][iz] - part->y[tid];
-            zeta[1] = grd->ZN[ix][iy][iz] - part->z[tid];
-
-            for (int ii = 0; ii < 2; ii++)
-                for (int jj = 0; jj < 2; jj++)
-                    for (int kk = 0; kk < 2; kk++)
-                        weight[ii][jj][kk] = xi[ii] * eta[jj] * zeta[kk] * grd->invVOL;
-
-            Exl = 0.0, Eyl = 0.0, Ezl = 0.0, Bxl = 0.0, Byl = 0.0, Bzl = 0.0;
-
-            for (int ii = 0; ii < 2; ii++)
-                for (int jj = 0; jj < 2; jj++)
-                    for(int kk = 0; kk < 2; kk++){
-                        Exl += weight[ii][jj][kk] * field->Ex[ix - ii][iy - jj][iz - kk];
-                        Eyl += weight[ii][jj][kk] * field->Ey[ix - ii][iy - jj][iz - kk];
-                        Ezl += weight[ii][jj][kk] * field->Ez[ix - ii][iy - jj][iz - kk];
-                        Bxl += weight[ii][jj][kk] * field->Bxn[ix - ii][iy - jj][iz - kk];
-                        Byl += weight[ii][jj][kk] * field->Byn[ix - ii][iy - jj][iz - kk];
-                        Bzl += weight[ii][jj][kk] * field->Bzn[ix - ii][iy - jj][iz - kk];
+        for(int i_sub=0; i_sub < part->n_sub_cycles; i_sub++){
+            xptilde = part->x[tid];
+            yptilde = part->y[tid];
+            zptilde = part->z[tid];
+            
+            for(int innter=0; innter < part->NiterMover; innter++){
+                ix = 2 + int((part->x[tid] - grd->xStart) * grd->invdx);
+                iy = 2 + int((part->y[tid] - grd->yStart) * grd->invdy);
+                iz = 2 + int((part->z[tid] - grd->zStart) * grd->invdz);
+    
+                xi[0]   = part->x[tid] - grd->XN[ix - 1][iy][iz];
+                eta[0]  = part->y[tid] - grd->YN[ix][iy - 1][iz];
+                zeta[0] = part->z[tid] - grd->ZN[ix][iy][iz - 1];
+                xi[1]   = grd->XN[ix][iy][iz] - part->x[tid];
+                eta[1]  = grd->YN[ix][iy][iz] - part->y[tid];
+                zeta[1] = grd->ZN[ix][iy][iz] - part->z[tid];
+    
+                for (int ii = 0; ii < 2; ii++)
+                    for (int jj = 0; jj < 2; jj++)
+                        for (int kk = 0; kk < 2; kk++)
+                            weight[ii][jj][kk] = xi[ii] * eta[jj] * zeta[kk] * grd->invVOL;
+    
+                Exl = 0.0, Eyl = 0.0, Ezl = 0.0, Bxl = 0.0, Byl = 0.0, Bzl = 0.0;
+    
+                for (int ii = 0; ii < 2; ii++)
+                    for (int jj = 0; jj < 2; jj++)
+                        for(int kk = 0; kk < 2; kk++){
+                            Exl += weight[ii][jj][kk] * field->Ex[ix - ii][iy - jj][iz - kk];
+                            Eyl += weight[ii][jj][kk] * field->Ey[ix - ii][iy - jj][iz - kk];
+                            Ezl += weight[ii][jj][kk] * field->Ez[ix - ii][iy - jj][iz - kk];
+                            Bxl += weight[ii][jj][kk] * field->Bxn[ix - ii][iy - jj][iz - kk];
+                            Byl += weight[ii][jj][kk] * field->Byn[ix - ii][iy - jj][iz - kk];
+                            Bzl += weight[ii][jj][kk] * field->Bzn[ix - ii][iy - jj][iz - kk];
+                        }
+    
+                omdtsq = qomdt2 * qomdt2 * (Bxl * Bxl + Byl * Byl + Bzl * Bzl);
+                denom = 1.0 / (1.0 + omdtsq);
+    
+                ut = part->u[tid] + qomdt2 * Exl;
+                vt = part->v[tid] + qomdt2 * Eyl;
+                wt = part->w[tid] + qomdt2 * Ezl;
+                udotb = ut * Bxl + vt * Byl + wt * Bzl;
+    
+                uptilde = (ut + qomdt2 * (vt * Bzl - wt * Byl + qomdt2 * udotb * Bxl)) * denom;
+                vptilde = (vt + qomdt2 * (wt * Bxl - ut * Bzl + qomdt2 * udotb * Byl)) * denom;
+                wptilde = (wt + qomdt2 * (ut * Byl - vt * Bxl + qomdt2 * udotb * Bzl)) * denom;
+    
+                part->x[tid] = xptilde + uptilde*dto2;
+                part->y[tid] = yptilde + vptilde*dto2;
+                part->z[tid] = zptilde + wptilde*dto2;
+            }
+    
+            part->u[tid] = 2.0 * uptilde - part->u[tid];
+            part->v[tid] = 2.0 * vptilde - part->v[tid];
+            part->w[tid] = 2.0 * wptilde - part->w[tid];
+            part->x[tid] = xptilde + uptilde * dt_sub_cycling;
+            part->y[tid] = yptilde + vptilde * dt_sub_cycling;
+            part->z[tid] = zptilde + wptilde * dt_sub_cycling;
+    
+    
+            // boundary conditions
+            if(part->x[tid] > grd->Lx){
+                if(param->PERIODICX==true){ 
+                    part->x[tid] = part->x[tid] - grd->Lx;
+                } else {
+                    part->u[tid] = -part->u[tid];
+                    part->x[tid] = 2*grd->Lx - part->x[tid];
+                }
+            }
+    
+            if(part->x[tid] < 0){
+                if(param->PERIODICX==true){
+                    part->x[tid] = part->x[tid] + grd->Lx;
+                } else {
+                    part->u[tid] = -part->u[tid];
+                    part->x[tid] = -part->x[tid];
+                }
+            }
+                // Y-DIRECTION: BC particles
+                if (part->y[tid] > grd->Ly){
+                    if (param->PERIODICY==true){ // PERIODIC
+                        part->y[tid] = part->y[tid] - grd->Ly;
+                    } else { // REFLECTING BC
+                        part->v[tid] = -part->v[tid];
+                        part->y[tid] = 2*grd->Ly - part->y[tid];
                     }
-
-            omdtsq = qomdt2 * qomdt2 * (Bxl * Bxl + Byl * Byl + Bzl * Bzl);
-            denom = 1.0 / (1.0 + omdtsq);
-
-            ut = part->u[tid] + qomdt2 * Exl;
-            vt = part->v[tid] + qomdt2 * Eyl;
-            wt = part->w[tid] + qomdt2 * Ezl;
-            udotb = ut * Bxl + vt * Byl + wt * Bzl;
-
-            uptilde = (ut + qomdt2 * (vt * Bzl - wt * Byl + qomdt2 * udotb * Bxl)) * denom;
-            vptilde = (vt + qomdt2 * (wt * Bxl - ut * Bzl + qomdt2 * udotb * Byl)) * denom;
-            wptilde = (wt + qomdt2 * (ut * Byl - vt * Bxl + qomdt2 * udotb * Bzl)) * denom;
-
-            xptilde = part->x[tid] + uptilde * dto2;
-            yptilde = part->y[tid] + vptilde * dto2;
-            zptilde = part->z[tid] + wptilde * dto2;
-        }
-
-        part->u[tid] = 2.0 * uptilde - part->u[tid];
-        part->v[tid] = 2.0 * vptilde - part->v[tid];
-        part->w[tid] = 2.0 * wptilde - part->w[tid];
-        part->x[tid] = xptilde + uptilde * dt_sub_cycling;
-        part->y[tid] = yptilde + vptilde * dt_sub_cycling;
-        part->z[tid] = zptilde + wptilde * dt_sub_cycling;
-
-
-        // boundary conditions
-        if(part->x[tid] > grd->Lx){
-            if(param->PERIODICX==true){ 
-                part->x[tid] = part->x[tid] - grd->Lx;
-            } else {
-                part->u[tid] = -part->u[tid];
-                part->x[tid] = 2*grd->Lx - part->x[tid];
-            }
-        }
-
-        if(part->x[tid] < 0){
-            if(param->PERIODICX==true){
-                part->x[tid] = part->x[tid] + grd->Lx;
-            } else {
-                part->u[tid] = -part->u[tid];
-                part->x[tid] = -part->x[tid];
-            }
-        }
-
-        if(part->y[tid] > grd->Ly){
-            if(param->PERIODICY==true){ 
-                part->y[tid] = part->y[tid] - grd->Ly;
-            } else { 
-                part->v[tid] = -part->v[tid];
-                part->y[tid] = 2*grd->Ly - part->y[tid];
-            }
+                }
+                                                                            
+                if (part->y[tid] < 0){
+                    if (param->PERIODICY==true){ // PERIODIC
+                        part->y[tid] = part->y[tid] + grd->Ly;
+                    } else { // REFLECTING BC
+                        part->v[tid] = -part->v[tid];
+                        part->y[tid] = -part->y[tid];
+                    }
+                }
+                                                                            
+                // Z-DIRECTION: BC particles
+                if (part->z[tid] > grd->Lz){
+                    if (param->PERIODICZ==true){ // PERIODIC
+                        part->z[tid] = part->z[tid] - grd->Lz;
+                    } else { // REFLECTING BC
+                        part->w[tid] = -part->w[tid];
+                        part->z[tid] = 2*grd->Lz - part->z[tid];
+                    }
+                }
+                                                                            
+                if (part->z[tid] < 0){
+                    if (param->PERIODICZ==true){ // PERIODIC
+                        part->z[tid] = part->z[tid] + grd->Lz;
+                    } else { // REFLECTING BC
+                        part->w[tid] = -part->w[tid];
+                        part->z[tid] = -part->z[tid];
+                    }
+                }
         }
     }
 }
@@ -339,7 +369,7 @@ __global__ void moverKernel(struct particles* part, struct EMfield* field, struc
 int mover_PC_GPU(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param) {
     // Calculate the number of blocks and threads
     int numParticles = part->nop;
-    int TPB = 64;  // Adjust as needed
+    int TPB = 128;
     int numBlocks = (numParticles + TPB - 1) / TPB;
 
     // Allocate memory on the GPU
@@ -361,6 +391,7 @@ int mover_PC_GPU(struct particles* part, struct EMfield* field, struct grid* grd
 
     // Launch the CUDA kernel
     moverKernel<<<numBlocks, TPB>>>(devicePart, deviceField, deviceGrid, deviceParam);
+    cudaDeviceSynchronize();
 
     // Copy the data back to the CPU
     cudaMemcpy(part, devicePart, sizeof(struct particles), cudaMemcpyDeviceToHost);

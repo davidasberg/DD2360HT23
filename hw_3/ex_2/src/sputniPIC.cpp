@@ -30,7 +30,7 @@
 // Read and output operations
 #include "RW_IO.h"
 
-#define GPU 1 // 0: CPU, 1: GPU
+#define GPU // comment this line to run on CPU
 
 int main(int argc, char **argv){
     
