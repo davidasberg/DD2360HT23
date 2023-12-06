@@ -121,7 +121,7 @@ int main(int argc, char **argv)
     srand(time(NULL));
     for (int i = 0; i < inputLength; i++)
     {
-        hostInput[i] = 4095; // rand() % NUM_BINS;
+        hostInput[i] = rand() % NUM_BINS;
     }
 
     // for (int i = 0; i < inputLength; i++)
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
     cudaMemcpy(hostBins, deviceBins, NUM_BINS * sizeof(unsigned int), cudaMemcpyDeviceToHost);
     end_copy_to_host = std::chrono::system_clock::now();
 
-    printf("The GPU result is: \n");
+    // printf("The GPU result is: \n");
     // for (int i = 0; i < NUM_BINS; i++)
     // {
     //     if (hostBins[i] != 0)
@@ -202,6 +202,14 @@ int main(int argc, char **argv)
     printf("Histogram kernel: %f ms\n", std::chrono::duration<double, std::milli>(end_hist_kernel - start_hist_kernel).count());
     printf("Convert kernel: %f ms\n", std::chrono::duration<double, std::milli>(end_convert_kernel - start_convert_kernel).count());
     printf("Copy to host: %f ms\n", std::chrono::duration<double, std::milli>(end_copy_to_host - start_copy_to_host).count());
+
+    // print histogram to file¨
+    FILE *fp;
+    fp = fopen("histogram.txt", "w");
+    for (int i = 0; i < NUM_BINS; i++)
+    {
+        fprintf(fp, "%d\n", hostBins[i]);
+    }
 
     //@@ Free the GPU memory here
     cudaFree(deviceInput);
