@@ -8,7 +8,7 @@
 
 #define DataType double
 #define THREADS_PER_BLOCK 32
-#define S_SEG 1000
+#define S_SEG 100
 #define N_STREAMS 4
 
 __global__ void vecAdd(DataType *in1, DataType *in2, DataType *out, int len)
@@ -120,10 +120,10 @@ int main(int argc, char **argv)
     cudaStream_t stream = streams[i % N_STREAMS];
     cudaMemcpyAsync(hostOutput + offset, deviceOutput + offset, len * sizeof(DataType), cudaMemcpyDeviceToHost, stream);
   }
-  end_copy_to_host = std::chrono::system_clock::now();
 
   // Wait for all streams to finish
   cudaDeviceSynchronize();
+  end_copy_to_host = std::chrono::system_clock::now();
 
   //@@ Insert code below to compare the output with the reference
   for (int i = 0; i < inputLength; i++)
