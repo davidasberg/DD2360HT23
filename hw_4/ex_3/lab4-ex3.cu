@@ -139,11 +139,11 @@ int main(int argc, char **argv)
     {
         cputimer_start();
         //@@ Insert code to prefetch in Unified Memory asynchronously to CPU
-        gpuCheck(cudaMemPrefetchAsync(temp, sizeof(double) * dimX, device));
-        gpuCheck(cudaMemPrefetchAsync(tmp, sizeof(double) * dimX, device));
-        gpuCheck(cudaMemPrefetchAsync(A, sizeof(double) * dimX * dimX, device));
-        gpuCheck(cudaMemPrefetchAsync(ARowPtr, sizeof(int) * (dimX + 1), device));
-        gpuCheck(cudaMemPrefetchAsync(AColIndx, sizeof(int) * nzv, device));
+        gpuCheck(cudaMemPrefetchAsync(temp, sizeof(double) * dimX, cudaCpuDeviceId));
+        gpuCheck(cudaMemPrefetchAsync(tmp, sizeof(double) * dimX, cudaCpuDeviceId));
+        gpuCheck(cudaMemPrefetchAsync(A, sizeof(double) * dimX * dimX, cudaCpuDeviceId));
+        gpuCheck(cudaMemPrefetchAsync(ARowPtr, sizeof(int) * (dimX + 1), cudaCpuDeviceId));
+        gpuCheck(cudaMemPrefetchAsync(AColIndx, sizeof(int) * nzv, cudaCpuDeviceId));
         cputimer_stop("Prefetching GPU memory to the host");
     }
 
@@ -165,6 +165,9 @@ int main(int argc, char **argv)
         //@@ Insert code to prefetch in Unified Memory asynchronously to the GPU
         gpuCheck(cudaMemPrefetchAsync(temp, sizeof(double) * dimX, device));
         gpuCheck(cudaMemPrefetchAsync(tmp, sizeof(double) * dimX, device));
+        gpuCheck(cudaMemPrefetchAsync(A, sizeof(double) * dimX * dimX, device));
+        gpuCheck(cudaMemPrefetchAsync(ARowPtr, sizeof(int) * (dimX + 1), device));
+        gpuCheck(cudaMemPrefetchAsync(AColIndx, sizeof(int) * nzv, device));
         cputimer_stop("Prefetching GPU memory to the device");
     }
 
